@@ -6,7 +6,7 @@
 
 import os
 from setuptools import setup, find_packages, Extension
-from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CppExtension
+# from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CppExtension
 import sys
 
 
@@ -151,8 +151,9 @@ setup(
         'numpy',
         'regex',
         'sacrebleu',
-        'torch',
+        'torch==1.4.0',
         'tqdm',
+        'wandb',
     ],
     dependency_links=dependency_links,
     packages=find_packages(exclude=['scripts', 'tests']),

@@ -293,10 +293,8 @@ def cli_main(modify_parser=None):
     # NOTE JASON: There's a wandb bug that prevents value change update
     # fixed by adding "allow_val_change=self._settings.allow_val_change" args to
     # wandb_config.py:142
-    class Namespace:
-        def __init__(self, kwargs):
-            self.__dict__.update(**kwargs)
-    args = Namespace(wandb.config)
+    from types import SimpleNamespace
+    args = SimpleNamespace(**wandb.config)
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)
