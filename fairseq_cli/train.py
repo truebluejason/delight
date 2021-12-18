@@ -12,6 +12,7 @@ import math
 import os
 import random
 import sys
+import wandb
 
 import numpy as np
 import torch
@@ -193,6 +194,7 @@ def train(args, trainer, task, epoch_itr):
             and num_updates % args.save_interval_updates == 0
             and num_updates > 0
         ):
+            wandb.log({f"train/{k}":v for k,v in stats.items()})
             valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
             checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
 
@@ -202,6 +204,7 @@ def train(args, trainer, task, epoch_itr):
     # log end-of-epoch stats
     stats = get_training_stats(metrics.get_smoothed_values('train'))
     progress.print(stats, tag='train', step=num_updates)
+    wandb.log({f"train/{k}":v for k,v in stats.items()})
 
     # reset epoch-level meters
     metrics.reset_meters('train')
@@ -256,6 +259,7 @@ def validate(args, trainer, task, epoch_itr, subsets):
         progress.print(stats, tag=subset, step=trainer.get_num_updates())
 
         valid_losses.append(stats[args.best_checkpoint_metric])
+        wandb.log({f"val/{k}":v for k,v in stats.items()})
     return valid_losses
 
 
@@ -283,6 +287,16 @@ def distributed_main(i, args, start_rank=0):
 def cli_main(modify_parser=None):
     parser = options.get_training_parser()
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
+    if args.wandb_mode == 'offline':
+        os.environ['WANDB_MODE'] = 'offline'
+    wandb.init(project=args.wandb_project, entity='normal-transformers', allow_val_change=True, config=args)
+    # NOTE JASON: There's a wandb bug that prevents value change update
+    # fixed by adding "allow_val_change=self._settings.allow_val_change" args to
+    # wandb_config.py:142
+    class Namespace:
+        def __init__(self, kwargs):
+            self.__dict__.update(**kwargs)
+    args = Namespace(wandb.config)
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)

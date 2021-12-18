@@ -158,3 +158,6 @@ scripts/main_*
 
 scripts_tmp/
 scripts_tmp/*
+
+.vscode
+wandb

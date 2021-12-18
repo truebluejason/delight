@@ -158,6 +158,12 @@ class DeLighTTransformerModel(FairseqEncoderDecoderModel):
         parser.add_argument('--no-scale-embedding', action='store_true',
                             help='if True, dont scale embeddings')
 
+        # Scaled Euclidean Attention
+        parser.add_argument('--attn-type', help='attention type', type=str, required=True)
+        parser.add_argument('--beta', help='scaling factor', type=float, default=0.)
+        parser.add_argument('--wandb-project', help='wandb project name', type=str)
+        parser.add_argument('--wandb-mode', type=str, help='whether to run wandb online or offline')
+
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""
@@ -424,7 +430,6 @@ class DeLighTTransformerEncoder(FairseqEncoder):
         )
 
         self.positional_dropout = RecurrentDropout(p=args.pe_dropout, batch_first=True) if not args.no_token_positional_embeddings else None
-
         self.layer_wise_attention = getattr(args, "layer_wise_attention", False)
 
         self.layers = nn.ModuleList([])
@@ -1076,6 +1081,11 @@ def base_architecture(args):
     args.decoder_learned_pos = getattr(args, 'decoder_learned_pos', False)
 
     args.no_scale_embedding = getattr(args, "no_scale_embedding", False)
+
+    # Scaled Euclidean Attention
+    args.disentangle = getattr(args, 'attn_type') in ['gmm_norm', 'gmm_norm_theta']
+    args.theta = getattr(args, 'attn_type') in ['standard_theta', 'gmm_norm_theta']
+    args.beta = getattr(args, 'beta', None)
 
 
 @register_model_architecture("delight_transformer", "delight_transformer_wmt14_en_de")

@@ -39,19 +39,17 @@ def run_experiment(args):
                '--ddp-backend=no_c10d --max-tokens {} '
                '--max-update {} --warmup-updates {} '
                '--lr-scheduler linear --warmup-init-lr 1e-7 --lr {} --min-lr 1e-9 '
-               '--t-mult 1 --save-dir {} '
+               '--save-dir {} '
                '--distributed-world-size {} --distributed-port 50786 '
                '--delight-emb-map-dim 128 --delight-emb-out-dim {} '
                '--delight-enc-min-depth 4 --delight-enc-max-depth 8 --delight-enc-width-mult 2 '
                '--delight-dec-min-depth 4 --delight-dec-max-depth 8 --delight-dec-width-mult 2 '
-               '| tee -a {}'.format(data_dir,
-                                    update_freq, max_tokens,
-                                    max_update, warmup_update, max_lr,
-                                    results_dir,
-                                    num_gpus,
-                                    d_m,
-                                    log_file
-                                    )]
+               '--wandb-project sea_en-ro --wandb-mode {} --attn-type {} --beta {} --seed {} | tee -a {}'.format(
+                    data_dir, update_freq, max_tokens,
+                    max_update, warmup_update, max_lr,
+                    results_dir, num_gpus, d_m, args.wandb_mode,
+                    args.attn_type, args.beta, args.seed, log_file
+                )]
 
     print_log_message('Training command: ')
     print(command[0])
@@ -59,17 +57,23 @@ def run_experiment(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Training script for WMT14 En2De')
+    # Local Debugging: Set --max-tokens=1024 and --num-gpus=1 --wandb-mode=offline
+    parser = argparse.ArgumentParser('Training script for WMT16 En2Ro')
 
     parser.add_argument('--d-m', type=int, default=128, help='Model dimension')
-    parser.add_argument('--data-dir', type=str, default='data-bin/wmt14_en_ro', help='Data location')
+    parser.add_argument('--data-dir', type=str, default='data-bin/wmt16_en_ro', help='Data location')
     parser.add_argument('--max-updates', type=int, default=100000, help='Max. updates')
     parser.add_argument('--warmup-updates', type=int, default=10000, help='Warmup updates')
     parser.add_argument('--max-tokens', type=int, default=4096, help='Max. tokens')
     parser.add_argument('--update-freq', type=int, default=1, help='update freq')
     parser.add_argument('--num-gpus', type=int, default=8, help='num. of GPUs')
-    parser.add_argument('--save-dir', type=str, default='./results_wmt16_en2ro', help='Results directory')
-
+    parser.add_argument('--save-dir', type=str, required=True, help='Results directory')
+    parser.add_argument('--attn-type', type=str, default='standard', help='attention type', required=True,
+                        choices=['standard', 'gmm_norm_theta', 'gmm_norm', 'standard_theta'])
+    parser.add_argument('--beta', type=float, default=0., help='scaling factor')
+    parser.add_argument('--wandb-mode', type=str, default='online', help='whether to run wandb online or offline',
+                        choices=['online', 'offline'])
+    parser.add_argument('--seed', type=int, default=1, help='random seed')
 
     args = parser.parse_args()
 
