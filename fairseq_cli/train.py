@@ -194,7 +194,6 @@ def train(args, trainer, task, epoch_itr):
             and num_updates % args.save_interval_updates == 0
             and num_updates > 0
         ):
-            wandb.log({f"train/{k}":v for k,v in stats.items()})
             valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
             checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
 
@@ -204,7 +203,6 @@ def train(args, trainer, task, epoch_itr):
     # log end-of-epoch stats
     stats = get_training_stats(metrics.get_smoothed_values('train'))
     progress.print(stats, tag='train', step=num_updates)
-    wandb.log({f"train/{k}":v for k,v in stats.items()})
 
     # reset epoch-level meters
     metrics.reset_meters('train')
@@ -259,7 +257,6 @@ def validate(args, trainer, task, epoch_itr, subsets):
         progress.print(stats, tag=subset, step=trainer.get_num_updates())
 
         valid_losses.append(stats[args.best_checkpoint_metric])
-        wandb.log({f"val/{k}":v for k,v in stats.items()})
     return valid_losses
 
 

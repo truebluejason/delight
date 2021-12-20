@@ -14,7 +14,6 @@ def run_experiment(args):
     update_freq = args.update_freq
     num_gpus = args.num_gpus
     data_dir = args.data_dir
-    results_dir = args.save_dir
 
     # scale LR
     d_m = args.d_m
@@ -24,13 +23,14 @@ def run_experiment(args):
 
     max_lr = min(round((512.0 /d_m) * LR_512, 4), 0.01)
 
-    job_name = 'delight_out_{}'.format(d_m)
-
-    results_dir = '{}/{}'.format(results_dir, job_name)
+    job_name = 'delight{}_{}'.format(d_m, args.seed)
+    results_dir = 'results/en2ro/{}/{}'.format(args.attn_type, job_name)
     if not os.path.isdir(results_dir):
         os.makedirs(results_dir)
     log_file = '{}/logs.txt'.format(results_dir)
 
+    # NOTE JASON: This setup is not the same as what the paper says it used for en-ro
+    # found in https://arxiv.org/pdf/1904.09324.pdf
     command = ['python train.py {} --arch delight_transformer_wmt16_en_ro '
                '--no-progress-bar '
                '--optimizer adam --adam-betas \'(0.9, 0.98)\' --clip-norm 0.0 --weight-decay 0.0 '
@@ -57,7 +57,7 @@ def run_experiment(args):
 
 
 if __name__ == '__main__':
-    # Local Debugging: Set --max-tokens=1024 and --num-gpus=1 --wandb-mode=offline
+    # Local Debugging: Set --max-tokens=1024, --num-gpus=1, and --wandb-mode=offline
     parser = argparse.ArgumentParser('Training script for WMT16 En2Ro')
 
     parser.add_argument('--d-m', type=int, default=128, help='Model dimension')
@@ -67,10 +67,9 @@ if __name__ == '__main__':
     parser.add_argument('--max-tokens', type=int, default=4096, help='Max. tokens')
     parser.add_argument('--update-freq', type=int, default=1, help='update freq')
     parser.add_argument('--num-gpus', type=int, default=8, help='num. of GPUs')
-    parser.add_argument('--save-dir', type=str, required=True, help='Results directory')
-    parser.add_argument('--attn-type', type=str, default='standard', help='attention type', required=True,
+    parser.add_argument('--attn-type', type=str, default='standard', help='attention type',
                         choices=['standard', 'gmm_norm_theta', 'gmm_norm', 'standard_theta'])
-    parser.add_argument('--beta', type=float, default=0., help='scaling factor')
+    parser.add_argument('--beta', type=float, default=0., help='scaling factor (if 0. use 1/sqrt(d_k)')
     parser.add_argument('--wandb-mode', type=str, default='online', help='whether to run wandb online or offline',
                         choices=['online', 'offline'])
     parser.add_argument('--seed', type=int, default=1, help='random seed')

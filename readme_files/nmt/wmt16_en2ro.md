@@ -10,6 +10,28 @@ Download the pre-processed dataset by clicking this [link](https://drive.google.
 
 ## Training
 
+NOTE
+
+To debug DeLighT locally, use
+```
+python nmt_wmt16_en2ro.py --max-tokens 1024 --num-gpus 1 --wandb-mode offline --d-m 384 --attn-type standard
+```
+
+To replicate the repo's score remotely, use one of
+```
+python nmt_wmt16_en2ro.py --max-tokens 4096 --update-freq 8 --num-gpus 1 --d-m 384 --attn-type standard
+python nmt_wmt16_en2ro.py --max-tokens 4096 --update-freq 4 --num-gpus 2 --d-m 384 --attn-type standard
+python nmt_wmt16_en2ro.py --max-tokens 4096 --update-freq 2 --num-gpus 4 --d-m 384 --attn-type standard
+```
+
+To replicate the paper's best score remotely, use one of
+```
+python nmt_wmt16_en2ro.py --max-tokens 4096 --update-freq 16 --num-gpus 1 --d-m 640 --attn-type standard
+python nmt_wmt16_en2ro.py --max-tokens 4096 --update-freq 8 --num-gpus 2 --d-m 640 --attn-type standard
+python nmt_wmt16_en2ro.py --max-tokens 4096 --update-freq 4 --num-gpus 4 --d-m 640 --attn-type standard
+```
+
+
 To train a model with a single node comprising of 8 V100 GPUs (each with 32 GB memory), you can use the following command:
 
 ``` 

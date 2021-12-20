@@ -16,6 +16,7 @@ import os
 import sys
 
 import torch
+import wandb
 
 from fairseq import distributed_utils
 from fairseq.meters import AverageMeter, StopwatchMeter, TimeMeter
@@ -218,6 +219,7 @@ class simple_progress_bar(progress_bar):
                 and (i + 1) % self.log_interval == 0
             ):
                 postfix = self._str_commas(self.stats)
+                wandb.log({f"{self.tag}/{k}":v for k,v in self.stats.items()})
                 with rename_logger(logger, self.tag):
                     logger.info('{}:  {:5d} / {:d} {}'.format(self.prefix, i, size, postfix))
 
@@ -229,6 +231,7 @@ class simple_progress_bar(progress_bar):
     def print(self, stats, tag=None, step=None):
         """Print end-of-epoch stats."""
         postfix = self._str_pipes(self._format_stats(stats))
+        wandb.log({f"{tag}/{k}":v for k,v in stats.items()})
         with rename_logger(logger, tag):
             logger.info('{} | {}'.format(self.prefix, postfix))
 
