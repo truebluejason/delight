@@ -40,7 +40,7 @@ def run_experiment(args):
                '--max-update {} --warmup-updates {} '
                '--lr-scheduler linear --warmup-init-lr 1e-7 --lr {} --min-lr 1e-9 '
                '--save-dir {} '
-               '--distributed-world-size {} --distributed-port 50786 '
+               '--distributed-world-size {} '  # --distributed-port 50786 '
                '--delight-emb-map-dim 128 --delight-emb-out-dim {} '
                '--delight-enc-min-depth 4 --delight-enc-max-depth 8 --delight-enc-width-mult 2 '
                '--delight-dec-min-depth 4 --delight-dec-max-depth 8 --delight-dec-width-mult 2 '

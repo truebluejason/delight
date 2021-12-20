@@ -151,7 +151,7 @@ setup(
         'numpy',
         'regex',
         'sacrebleu',
-        'torch==1.4.0',
+        'torch==1.6.0',
         'tqdm',
         'wandb',
     ],
