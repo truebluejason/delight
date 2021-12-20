@@ -171,7 +171,7 @@ def train(args, trainer, task, epoch_itr):
     itr = iterators.GroupedIterator(itr, update_freq)
     progress = progress_bar.build_progress_bar(
         args, itr, epoch_itr.epoch, no_progress_bar='simple',
-        wandb_project=args.wandb_project, wandb_run_name=args.wandb_run_name
+        wandb_project=args.wandb_project, wandb_group_name=args.wandb_group_name
     )
 
     # task specific setup per epoch
@@ -246,7 +246,7 @@ def validate(args, trainer, task, epoch_itr, subsets):
             prefix='valid on \'{}\' subset'.format(subset),
             no_progress_bar='simple',
             wandb_project=args.wandb_project,
-            wandb_run_name=args.wandb_run_name
+            wandb_group_name=args.wandb_group_name
         )
 
         # create a new root metrics aggregator so validation metrics
@@ -289,13 +289,13 @@ def cli_main(modify_parser=None):
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
     if args.wandb_mode == 'offline':
         os.environ['WANDB_MODE'] = 'offline'
-    wandb.init(project=args.wandb_project, entity='normal-transformers', allow_val_change=True, config=args)
-    # NOTE JASON: There's a wandb bug that prevents value change update
-    # fixed by adding "allow_val_change=self._settings.allow_val_change" args to
-    # wandb_config.py:142
+    args.wandb_group_name = wandb.util.generate_id()
+    wandb.init(project=args.wandb_project, entity='normal-transformers',
+               group=args.wandb_group_name, config=args)
+    # NOTE JASON: There's a wandb bug that prevents value change update fixed by adding 
+    # "allow_val_change=self._settings.allow_val_change" args to wandb_config.py:142
     from types import SimpleNamespace
     args = SimpleNamespace(**wandb.config)
-    args.wandb_run_name = wandb.run.name
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)
@@ -328,6 +328,7 @@ def cli_main(modify_parser=None):
     else:
         # single GPU training
         main(args)
+    wandb.finish()
 
 
 if __name__ == '__main__':

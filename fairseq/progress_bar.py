@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_progress_bar(args, iterator, epoch=None, prefix=None, default='tqdm', no_progress_bar='none',
-                       wandb_project=None, wandb_run_name=None):
+                       wandb_project=None, wandb_group_name=None):
     if args.log_format is None:
         args.log_format = no_progress_bar if args.no_progress_bar else default
 
@@ -54,7 +54,7 @@ def build_progress_bar(args, iterator, epoch=None, prefix=None, default='tqdm', 
             bar = tensorboard_log_wrapper(bar, args.tensorboard_logdir, args)
 
     if wandb_project:
-        bar = WandBProgressBarWrapper(bar, wandb_project, run_name=wandb_run_name)
+        bar = WandBProgressBarWrapper(bar, wandb_project, group_name=wandb_group_name)
     return bar
 
 
@@ -322,7 +322,7 @@ class tensorboard_log_wrapper(progress_bar):
 class WandBProgressBarWrapper(progress_bar):
     """Log to Weights & Biases."""
 
-    def __init__(self, wrapped_bar, wandb_project, run_name=None):
+    def __init__(self, wrapped_bar, wandb_project, group_name=None):
         self.wrapped_bar = wrapped_bar
         if wandb is None:
             logger.warning("wandb not found, pip install wandb")
@@ -330,7 +330,7 @@ class WandBProgressBarWrapper(progress_bar):
 
         # reinit=False to ensure if wandb.init() is called multiple times
         # within one process it still references the same run
-        wandb.init(project=wandb_project, reinit=False, name=run_name)
+        wandb.init(project=wandb_project, entity='normal-transformers', reinit=False, group=group_name)
 
     def __iter__(self):
         return iter(self.wrapped_bar)
