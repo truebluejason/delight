@@ -25,7 +25,8 @@ from fairseq.meters import AverageMeter, StopwatchMeter, TimeMeter
 logger = logging.getLogger(__name__)
 
 
-def build_progress_bar(args, iterator, epoch=None, prefix=None, default='tqdm', no_progress_bar='none'):
+def build_progress_bar(args, iterator, epoch=None, prefix=None, default='tqdm', no_progress_bar='none',
+                       wandb_project=None, wandb_run_name=None):
     if args.log_format is None:
         args.log_format = no_progress_bar if args.no_progress_bar else default
 
@@ -52,6 +53,8 @@ def build_progress_bar(args, iterator, epoch=None, prefix=None, default='tqdm', 
         except ImportError:
             bar = tensorboard_log_wrapper(bar, args.tensorboard_logdir, args)
 
+    if wandb_project:
+        bar = WandBProgressBarWrapper(bar, wandb_project, run_name=wandb_run_name)
     return bar
 
 
@@ -219,7 +222,6 @@ class simple_progress_bar(progress_bar):
                 and (i + 1) % self.log_interval == 0
             ):
                 postfix = self._str_commas(self.stats)
-                wandb.log({f"{self.tag}/{k}":v for k,v in self.stats.items()})
                 with rename_logger(logger, self.tag):
                     logger.info('{}:  {:5d} / {:d} {}'.format(self.prefix, i, size, postfix))
 
@@ -231,7 +233,6 @@ class simple_progress_bar(progress_bar):
     def print(self, stats, tag=None, step=None):
         """Print end-of-epoch stats."""
         postfix = self._str_pipes(self._format_stats(stats))
-        wandb.log({f"{tag}/{k}":v for k,v in stats.items()})
         with rename_logger(logger, tag):
             logger.info('{} | {}'.format(self.prefix, postfix))
 
@@ -316,3 +317,50 @@ class tensorboard_log_wrapper(progress_bar):
                 writer.add_scalar(key, stats[key].val, step)
             elif isinstance(stats[key], Number):
                 writer.add_scalar(key, stats[key], step)
+
+
+class WandBProgressBarWrapper(progress_bar):
+    """Log to Weights & Biases."""
+
+    def __init__(self, wrapped_bar, wandb_project, run_name=None):
+        self.wrapped_bar = wrapped_bar
+        if wandb is None:
+            logger.warning("wandb not found, pip install wandb")
+            return
+
+        # reinit=False to ensure if wandb.init() is called multiple times
+        # within one process it still references the same run
+        wandb.init(project=wandb_project, reinit=False, name=run_name)
+
+    def __iter__(self):
+        return iter(self.wrapped_bar)
+
+    def log(self, stats, tag=None, step=None):
+        """Log intermediate stats to tensorboard."""
+        self._log_to_wandb(stats, tag, step)
+        self.wrapped_bar.log(stats, tag=tag, step=step)
+
+    def print(self, stats, tag=None, step=None):
+        """Print end-of-epoch stats."""
+        self._log_to_wandb(stats, tag, step)
+        self.wrapped_bar.print(stats, tag=tag, step=step)
+
+    def update_config(self, config):
+        """Log latest configuration."""
+        if wandb is not None:
+            wandb.config.update(config)
+        self.wrapped_bar.update_config(config)
+
+    def _log_to_wandb(self, stats, tag=None, step=None):
+        if wandb is None:
+            return
+        if step is None:
+            step = stats["num_updates"]
+
+        prefix = "" if tag is None else tag + "/"
+
+        for key in stats.keys() - {"num_updates"}:
+            if isinstance(stats[key], AverageMeter):
+                wandb.log({prefix + key: stats[key].val}, step=step)
+            elif isinstance(stats[key], Number):
+                wandb.log({prefix + key: stats[key]}, step=step)

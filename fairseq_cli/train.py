@@ -171,6 +171,7 @@ def train(args, trainer, task, epoch_itr):
     itr = iterators.GroupedIterator(itr, update_freq)
     progress = progress_bar.build_progress_bar(
         args, itr, epoch_itr.epoch, no_progress_bar='simple',
+        wandb_project=args.wandb_project, wandb_run_name=args.wandb_run_name
     )
 
     # task specific setup per epoch
@@ -243,7 +244,9 @@ def validate(args, trainer, task, epoch_itr, subsets):
         progress = progress_bar.build_progress_bar(
             args, itr, epoch_itr.epoch,
             prefix='valid on \'{}\' subset'.format(subset),
-            no_progress_bar='simple'
+            no_progress_bar='simple',
+            wandb_project=args.wandb_project,
+            wandb_run_name=args.wandb_run_name
         )
 
         # create a new root metrics aggregator so validation metrics
@@ -292,6 +295,7 @@ def cli_main(modify_parser=None):
     # wandb_config.py:142
     from types import SimpleNamespace
     args = SimpleNamespace(**wandb.config)
+    args.wandb_run_name = wandb.run.name
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)
