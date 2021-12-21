@@ -21,9 +21,9 @@ class SingleHeadAttention(nn.Module):
     """Single head attention as defined in DeLighT paper
     """
 
-    def __init__(self, q_in_dim, kv_in_dim, proj_dim, out_dim,
-                 dropout=0.0, bias=True,
-                 self_attention=False, encoder_decoder_attention=False):
+    def __init__(self, q_in_dim, kv_in_dim, proj_dim, out_dim, dropout=0.0, bias=True,
+                 self_attention=False, encoder_decoder_attention=False, disentangle=False,
+                 theta=False, qk_normalize=False, beta=0.):
         '''
         :param embed_dim: Input dimension
         :param out_dim: Output dimension
@@ -64,7 +64,6 @@ class SingleHeadAttention(nn.Module):
                                               use_bias=True,
                                               gates=2
                                               )
-        self.scaling = self.proj_dim ** -0.5
         self.out_proj = get_weight_layer(name='linear',
                                       in_features=self.proj_dim,
                                       out_features=self.out_dim,
@@ -72,6 +71,18 @@ class SingleHeadAttention(nn.Module):
                                       )
 
         self.onnx_trace = False
+
+        assert not (disentangle and qk_normalize)
+        self.disentangle = disentangle
+        self.qk_normalize = qk_normalize
+        self.theta = theta
+        if self.theta:
+            self.linear_theta = get_weight_layer(name='linear',
+                                                 in_features=self.kv_embed_dim,
+                                                 out_features=1,
+                                                 use_bias=True,
+                                                 gates=1)
+        self.scaling = beta if beta > 0. else self.proj_dim **-0.5
 
     def prepare_for_onnx_export_(self):
         self.onnx_trace = True
@@ -85,6 +96,8 @@ class SingleHeadAttention(nn.Module):
         elif self.encoder_decoder_attention:
             s += '\n  \t |---- KV function: \t {}'.format(self.linear_kv)
             s += '\n  \t |---- Q function: \t {}'.format(self.linear_q)
+        if self.theta:
+            s += '\n  \t |---- Theta function: \t {}'.format(self.linear_theta)
         s += '\n  \t |---- Proj: {}'.format(self.out_proj)
         return s.format(name=self.__class__.__name__, **self.__dict__)
 
@@ -136,8 +149,11 @@ class SingleHeadAttention(nn.Module):
         else:
             saved_state = None
 
+        theta = None
         if self.self_attention:
             q, k, v = torch.chunk(self.linear_kqv(query), chunks=3, dim=-1)
+            if self.theta:
+                theta = self.linear_theta(query)
         elif self.encoder_decoder_attention:
             # encoder-decoder attention
             q = self.linear_q(query)
@@ -145,6 +161,8 @@ class SingleHeadAttention(nn.Module):
                 k = v = None
             else:
                 k, v = torch.chunk(self.linear_kv(key_value), chunks=2, dim=-1)
+            if self.theta and key_value is not None:
+                theta = self.linear_theta(key_value)
         else:
             raise NotImplementedError
 
@@ -157,6 +175,9 @@ class SingleHeadAttention(nn.Module):
 
         if v is not None:
             v = v.contiguous().transpose(0, 1)
+
+        if theta is not None:
+            theta = theta.contiguous().transpose(0, 1)
 
         if saved_state is not None:
             # saved states are stored with shape (bsz, seq_len, head_dim)
@@ -176,6 +197,14 @@ class SingleHeadAttention(nn.Module):
                 else:
                     assert v is not None
                     v = torch.cat([prev_value, v], dim=1)
+            if "prev_theta" in saved_state:
+                prev_theta = saved_state["prev_theta"]
+                assert prev_theta is not None
+                if static_kv:
+                    theta = prev_theta
+                else:
+                    assert theta is not None
+                    theta = torch.cat([prev_theta, theta], dim=1)
 
             prev_key_padding_mask: Optional[Tensor] = None
             if "prev_key_padding_mask" in saved_state:
@@ -191,6 +220,8 @@ class SingleHeadAttention(nn.Module):
 
             saved_state["prev_key"] = k
             saved_state["prev_value"] = v
+            if self.theta:
+                saved_state["prev_theta"] = theta
             saved_state["prev_key_padding_mask"] = key_padding_mask
             # In this branch incremental_state is never None
             assert incremental_state is not None
@@ -209,7 +240,15 @@ class SingleHeadAttention(nn.Module):
             assert key_padding_mask.size(1) == src_len
 
         # [B x T x C] x [B x C x S] --> [B x T x S]
+        if self.qk_normalize:
+            q = q / torch.sqrt((q * q).sum(dim=-1)).unsqueeze(-1)
+            k = k / torch.sqrt((k * k).sum(dim=-1)).unsqueeze(-1)
         attn_weights = torch.bmm(q, k.transpose(1, 2))
+        if self.disentangle:
+            squared_key_norms = (k * k).sum(dim=-1).unsqueeze(-2)
+            attn_weights = attn_weights - self.scaling / 2 * squared_key_norms
+        if self.theta:
+            attn_weights = attn_weights + theta.transpose(1, 2)
 
         attn_weights = SingleHeadAttention.apply_sparse_mask(attn_weights, tgt_len, src_len, bsz)
 

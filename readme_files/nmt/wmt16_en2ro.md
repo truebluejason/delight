@@ -29,6 +29,7 @@ To replicate the paper's best score remotely, use one of
 python nmt_wmt16_en2ro.py --max-tokens 3200 --update-freq 20 --num-gpus 1 --d-m 640 --attn-type standard
 python nmt_wmt16_en2ro.py --max-tokens 3200 --update-freq 10 --num-gpus 2 --d-m 640 --attn-type standard
 python nmt_wmt16_en2ro.py --max-tokens 3200 --update-freq 5 --num-gpus 4 --d-m 640 --attn-type standard
+python nmt_wmt16_en2ro.py --max-tokens 2800 --update-freq 3 --num-gpus 8 --d-m 640 --attn-type standard
 ```
 
 

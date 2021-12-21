@@ -48,7 +48,10 @@ class DeLighTTransformerEncoderLayer(nn.Module):
                                              dropout=args.attention_dropout,
                                              bias=True,
                                              self_attention=True,
-                                             encoder_decoder_attention=False)
+                                             encoder_decoder_attention=False,
+                                             disentangle=args.disentangle,
+                                             theta=args.theta,
+                                             beta=args.beta)
 
         self.self_attn_layer_norm = get_norm_layer(name=args.norm_type, out_features=self.embed_dim)
         self.dropout = args.dropout
@@ -226,7 +229,10 @@ class DeLighTTransformerDecoderLayer(nn.Module):
                                              dropout=args.attention_dropout,
                                              bias=True,
                                              self_attention=True,
-                                             encoder_decoder_attention=False)
+                                             encoder_decoder_attention=False,
+                                             disentangle=args.disentangle,
+                                             theta=args.theta,
+                                             beta=args.beta)
 
         self.dropout = args.dropout
         self.activation_fn = get_activation_layer(name=args.act_type)
@@ -251,7 +257,10 @@ class DeLighTTransformerDecoderLayer(nn.Module):
                                                     dropout=args.attention_dropout,
                                                     bias=True,
                                                     encoder_decoder_attention=True,
-                                                    self_attention=False)
+                                                    self_attention=False,
+                                                    disentangle=args.disentangle,
+                                                    theta=args.theta,
+                                                    beta=args.beta)
 
             self.encoder_attn_layer_norm = get_norm_layer(name=args.norm_type, out_features=self.embed_dim)
 
@@ -333,7 +342,14 @@ class DeLighTTransformerDecoderLayer(nn.Module):
                 "prev_value": prev_value,
             }
             if len(prev_self_attn_state) >= 3:
-                saved_state["prev_key_padding_mask"] = prev_self_attn_state[2]
+                optional_state = prev_self_attn_state[2]
+                if "prev_key_padding_mask" in optional_state:
+                    saved_state["prev_key_padding_mask"] = optional_state["prev_key_padding_mask"]
+                if "prev_theta" in optional_state:
+                    prev_theta = optional_state["prev_theta"]
+                    saved_state["theta"] = prev_theta
+                else:
+                    prev_theta = None
             assert incremental_state is not None
             self.self_attn._set_input_buffer(incremental_state, saved_state)
 
@@ -362,7 +378,14 @@ class DeLighTTransformerDecoderLayer(nn.Module):
                     "prev_value": prev_value,
                 }
                 if len(prev_attn_state) >= 3:
-                    saved_state["prev_key_padding_mask"] = prev_attn_state[2]
+                    optional_state = prev_attn_state[2]
+                    if "prev_key_padding_mask" in optional_state:
+                        saved_state["prev_key_padding_mask"] = optional_state["prev_key_padding_mask"]
+                    if "prev_theta" in optional_state:
+                        prev_theta = optional_state["prev_theta"]
+                        saved_state["theta"] = prev_theta
+                    else:
+                        prev_theta = None
                 assert incremental_state is not None
                 self.encoder_attn._set_input_buffer(incremental_state, saved_state)
 
@@ -397,11 +420,16 @@ class DeLighTTransformerDecoderLayer(nn.Module):
         if self.onnx_trace and incremental_state is not None:
             saved_state = self.self_attn._get_input_buffer(incremental_state)
             assert saved_state is not None
+            optional_state = {}
             if self_attn_padding_mask is not None:
+                optional_state["prev_key_padding_mask"] = saved_state["prev_key_padding_mask"]
+            if prev_theta is not None:
+                optional_state["prev_theta"] = saved_state["prev_theta"]
+            if len(optional_state) > 0:
                 self_attn_state = [
                     saved_state["prev_key"],
                     saved_state["prev_value"],
-                    saved_state["prev_key_padding_mask"],
+                    optional_state,
                 ]
             else:
                 self_attn_state = [saved_state["prev_key"], saved_state["prev_value"]]
