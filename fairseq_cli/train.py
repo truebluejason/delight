@@ -171,7 +171,8 @@ def train(args, trainer, task, epoch_itr):
     itr = iterators.GroupedIterator(itr, update_freq)
     progress = progress_bar.build_progress_bar(
         args, itr, epoch_itr.epoch, no_progress_bar='simple',
-        wandb_project=args.wandb_project, wandb_group_name=args.wandb_group_name
+        wandb_project=args.wandb_project, wandb_group_name=args.wandb_group_name,
+        wandb_tags=args.wandb_tags
     )
 
     # task specific setup per epoch
@@ -246,7 +247,8 @@ def validate(args, trainer, task, epoch_itr, subsets):
             prefix='valid on \'{}\' subset'.format(subset),
             no_progress_bar='simple',
             wandb_project=args.wandb_project,
-            wandb_group_name=args.wandb_group_name
+            wandb_group_name=args.wandb_group_name,
+            wandb_tags=args.wandb_tags
         )
 
         # create a new root metrics aggregator so validation metrics
@@ -291,11 +293,13 @@ def cli_main(modify_parser=None):
         os.environ['WANDB_MODE'] = 'offline'
     args.wandb_group_name = wandb.util.generate_id()
     wandb.init(project=args.wandb_project, entity='normal-transformers',
-               group=args.wandb_group_name, config=args)
+               group=args.wandb_group_name, config=args, allow_val_change=True)
     # NOTE JASON: There's a wandb bug that prevents value change update fixed by adding 
     # "allow_val_change=self._settings.allow_val_change" args to wandb_config.py:142
     from types import SimpleNamespace
     args = SimpleNamespace(**wandb.config)
+    args.wandb_tags = [f"d{args.delight_emb_out_dim}", f"s{args.seed}", args.attn_type]
+    wandb.run.tags = args.wandb_tags
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)

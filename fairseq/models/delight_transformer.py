@@ -1085,7 +1085,7 @@ def base_architecture(args):
     # Scaled Euclidean Attention
     args.disentangle = getattr(args, 'attn_type') in ['gmm_norm', 'gmm_norm_theta']
     args.theta = getattr(args, 'attn_type') in ['standard_theta', 'gmm_norm_theta', 'qk_norm_theta']
-    args.qk_normalize = getattr(args, 'attn_type') in ['qk_norm']
+    args.qk_normalize = getattr(args, 'attn_type') in ['qk_norm', 'qk_norm_theta']
     args.beta = getattr(args, 'beta', None)
 
 

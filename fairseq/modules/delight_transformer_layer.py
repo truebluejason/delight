@@ -51,6 +51,7 @@ class DeLighTTransformerEncoderLayer(nn.Module):
                                              encoder_decoder_attention=False,
                                              disentangle=args.disentangle,
                                              theta=args.theta,
+                                             qk_normalize=args.qk_normalize,
                                              beta=args.beta)
 
         self.self_attn_layer_norm = get_norm_layer(name=args.norm_type, out_features=self.embed_dim)
@@ -232,6 +233,7 @@ class DeLighTTransformerDecoderLayer(nn.Module):
                                              encoder_decoder_attention=False,
                                              disentangle=args.disentangle,
                                              theta=args.theta,
+                                             qk_normalize=args.qk_normalize,
                                              beta=args.beta)
 
         self.dropout = args.dropout
@@ -260,6 +262,7 @@ class DeLighTTransformerDecoderLayer(nn.Module):
                                                     self_attention=False,
                                                     disentangle=args.disentangle,
                                                     theta=args.theta,
+                                                    qk_normalize=args.qk_normalize,
                                                     beta=args.beta)
 
             self.encoder_attn_layer_norm = get_norm_layer(name=args.norm_type, out_features=self.embed_dim)
