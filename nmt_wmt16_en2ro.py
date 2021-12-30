@@ -68,7 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--update-freq', type=int, default=1, help='update freq')
     parser.add_argument('--num-gpus', type=int, default=8, help='num. of GPUs')
     parser.add_argument('--attn-type', type=str, default='standard', help='attention type',
-                        choices=['standard', 'gmm_norm_theta', 'gmm_norm', 'standard_theta'])
+                        choices=['standard', 'gmm_norm_theta', 'gmm_norm', 'standard_theta', 'qk_norm', 'qk_norm_theta'])
     parser.add_argument('--beta', type=float, default=0., help='scaling factor (if 0. use 1/sqrt(d_k)')
     parser.add_argument('--wandb-mode', type=str, default='online', help='whether to run wandb online or offline',
                         choices=['online', 'offline'])
